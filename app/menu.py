@@ -1,27 +1,38 @@
 """Menú lateral de Atalaya DB (nombres y orden propios).
 
-Cada entrada: (clave, título, icono Bootstrap, unidad del temario, listo?)
-Las que tienen listo=False se muestran con la página "En desarrollo"
-hasta que se programe su módulo.
+Cada entrada: (clave, título, icono Bootstrap, unidad del temario)
+
+Un módulo se considera "listo" cuando existe la carpeta app/modulos/<clave>/
+con su routes.py y un Blueprint llamado igual que la clave. Mientras no exista,
+el menú muestra la página "En desarrollo". La página principal de cada módulo
+nuevo debe llamarse "principal" (endpoint "<clave>.principal").
 """
 MENU = [
-    ("inicio",          "Panel general",          "bi-grid-1x2",          "U1", True),
-    ("servidores",      "Servidores",             "bi-hdd-network",       "U1/U2", True),
-    ("bases_datos",     "Bases de datos",         "bi-database",          "U3", True),
-    ("capacidad",       "Planeación de capacidad", "bi-bar-chart-steps",  "U3", True),
-    ("configuracion",   "Configuración",          "bi-sliders",           "U4", False),
-    ("desempeno",       "Desempeño",              "bi-speedometer2",      "U4", False),
-    ("consultas",       "Consultas optimizadas",  "bi-lightning-charge",  "U4", False),
-    ("recomendaciones", "Recomendaciones",        "bi-lightbulb",         "U4", False),
-    ("respaldos",       "Respaldos",              "bi-cloud-arrow-up",    "U5", False),
-    ("alertas",         "Alertas",                "bi-bell",              "U6", False),
-    ("errores",         "Errores severos",        "bi-exclamation-octagon", "U6", False),
-    ("trazas",          "Análisis de trazas",     "bi-activity",          "U6", False),
-    ("predicciones",    "Advertencias y predicciones", "bi-graph-up-arrow", "U6", False),
-    ("clasificacion",   "Clasificación de datos", "bi-shield-lock",       "U6", False),
-    ("documentacion",   "Documentación",          "bi-journal-text",      "Extra", False),
-    ("control_acceso",  "Control de acceso",      "bi-people",            "U6", False),
+    ("inicio",          "Panel general",          "bi-grid-1x2",          "U1"),
+    ("servidores",      "Servidores",             "bi-hdd-network",       "U1/U2"),
+    ("bases_datos",     "Bases de datos",         "bi-database",          "U3"),
+    ("capacidad",       "Planeación de capacidad", "bi-bar-chart-steps",  "U3"),
+    ("configuracion",   "Configuración",          "bi-sliders",           "U4"),
+    ("desempeno",       "Desempeño",              "bi-speedometer2",      "U4"),
+    ("consultas",       "Consultas optimizadas",  "bi-lightning-charge",  "U4"),
+    ("recomendaciones", "Recomendaciones",        "bi-lightbulb",         "U4"),
+    ("respaldos",       "Respaldos",              "bi-cloud-arrow-up",    "U5"),
+    ("alertas",         "Alertas",                "bi-bell",              "U6"),
+    ("errores",         "Errores severos",        "bi-exclamation-octagon", "U6"),
+    ("trazas",          "Análisis de trazas",     "bi-activity",          "U6"),
+    ("predicciones",    "Advertencias y predicciones", "bi-graph-up-arrow", "U6"),
+    ("clasificacion",   "Clasificación de datos", "bi-shield-lock",       "U6"),
+    ("documentacion",   "Documentación",          "bi-journal-text",      "Extra"),
+    ("control_acceso",  "Control de acceso",      "bi-people",            "U6"),
 ]
+
+# Módulos anteriores a la convención "<clave>.principal"
+PUNTOS_ENTRADA = {
+    "inicio": "inicio.home",
+    "servidores": "servidores.lista",
+    "bases_datos": "bases_datos.lista",
+    "capacidad": "capacidad.panel",
+}
 
 DESCRIPCIONES = {
     "bases_datos": "Listado de bases de datos por instancia: modelo de recuperación, estado, tamaño, memoria, CPU e IO Stall. Operaciones de copiar, snapshot, mover archivos y excluir del monitoreo.",

@@ -13,14 +13,6 @@
     {% block head %}{% endblock %}
 </head>
 <body>
-{% macro enlace_menu(clave) -%}
-    {%- if clave == 'inicio' -%}{{ url_for('inicio.home') }}
-    {%- elif clave == 'servidores' -%}{{ url_for('servidores.lista') }}
-    {%- elif clave == 'bases_datos' -%}{{ url_for('bases_datos.lista') }}
-    {%- elif clave == 'capacidad' -%}{{ url_for('capacidad.panel') }}
-    {%- else -%}{{ url_for('proximamente.modulo', clave=clave) }}{%- endif -%}
-{%- endmacro %}
-
 <!-- ========== Riel de íconos ========== -->
 <nav class="at-riel">
     <!-- Ícono pequeño: coloca tu archivo en app/static/img/logo-icono.png (cuadrado) -->
@@ -29,7 +21,8 @@
     </a>
     <ul class="at-riel-lista">
         {% set separar_despues = ['servidores', 'capacidad', 'recomendaciones', 'respaldos', 'predicciones'] %}
-        {% for clave, titulo, icono, unidad, listo in MENU %}
+        {% for clave, titulo, icono, unidad in MENU %}
+            {% set listo = modulo_listo(clave) %}
             {% set url = enlace_menu(clave) %}
             {% set activo = (request.path == url) or (clave != 'inicio' and request.path.startswith(url)) %}
             <li>

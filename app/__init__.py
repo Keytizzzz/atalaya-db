@@ -17,26 +17,36 @@ def create_app(config_class=Config, iniciar_recolector=True):
     app.teardown_appcontext(db_meta.cerrar_conexion)
 
     # --- Módulos (blueprints) ---
-    from app.modulos.auth.routes import bp as auth_bp
-    from app.modulos.inicio.routes import bp as inicio_bp
-    from app.modulos.servidores.routes import bp as servidores_bp
-    from app.modulos.proximamente.routes import bp as proximamente_bp
-    from app.modulos.bases_datos.routes import bp as bases_datos_bp
-    from app.modulos.capacidad.routes import bp as capacidad_bp
+    # Cada carpeta app/modulos/<nombre>/routes.py que defina "bp" se registra sola.
+    # Así cada integrante agrega su módulo sin tocar este archivo (evita conflictos en Git).
+    import importlib
+    import os
 
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(inicio_bp)
-    app.register_blueprint(servidores_bp)
-    app.register_blueprint(proximamente_bp)
-    app.register_blueprint(bases_datos_bp)
-    app.register_blueprint(capacidad_bp)
+    carpeta_modulos = os.path.join(os.path.dirname(__file__), "modulos")
+    for nombre in sorted(os.listdir(carpeta_modulos)):
+        if os.path.isfile(os.path.join(carpeta_modulos, nombre, "routes.py")):
+            modulo = importlib.import_module(f"app.modulos.{nombre}.routes")
+            bp = getattr(modulo, "bp", None)
+            if bp is not None and bp.name not in app.blueprints:
+                app.register_blueprint(bp)
 
     # --- Datos disponibles en todas las plantillas ---
-    import os
-    from app.menu import MENU
+    from flask import url_for
+    from app.menu import MENU, PUNTOS_ENTRADA
 
     def _existe(nombre):
         return os.path.exists(os.path.join(app.static_folder, "img", nombre))
+
+    def modulo_listo(clave):
+        """Un módulo está listo cuando existe su blueprint (app/modulos/<clave>/routes.py)."""
+        return clave in app.blueprints
+
+    def enlace_menu(clave):
+        if modulo_listo(clave):
+            return url_for(PUNTOS_ENTRADA.get(clave, f"{clave}.principal"))
+        return url_for("proximamente.modulo", clave=clave)
+
+    app.jinja_env.globals.update(modulo_listo=modulo_listo, enlace_menu=enlace_menu)
 
     @app.context_processor
     def datos_globales():
