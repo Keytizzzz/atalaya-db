@@ -1,0 +1,12 @@
+{# Selector de servidor reutilizable: incluir con {% include "_selector_servidor.html" %} #}
+{% if servidores %}
+<form method="get" class="d-flex align-items-center gap-2">
+    <label class="small text-muted text-nowrap" for="servidor">Servidor</label>
+    <select class="form-select form-select-sm" id="servidor" name="servidor" onchange="this.form.submit()" style="min-width: 220px">
+        {% for s in servidores %}
+            <option value="{{ s.id_servidor }}" {% if srv and s.id_servidor == srv.id_servidor %}selected{% endif %}>
+                {{ s.alias }} ({{ s.direccion }},{{ s.puerto }})</option>
+        {% endfor %}
+    </select>
+</form>
+{% endif %}

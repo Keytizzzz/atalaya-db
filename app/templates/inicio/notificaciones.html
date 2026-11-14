@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block titulo %}Notificaciones{% endblock %}
+{% block contenido %}
+<div class="card">
+    <div class="card-header d-flex align-items-center">
+        Notificaciones
+        <form class="ms-auto" method="post" action="{{ url_for('inicio.marcar_leidas') }}">
+            <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-check2-all"></i> Marcar todas como leídas</button>
+        </form>
+    </div>
+    <ul class="list-group list-group-flush">
+        {% for n in notificaciones %}
+        <li class="list-group-item d-flex gap-3 {% if not n.leida %}fw-semibold{% endif %}">
+            <span class="badge bg-{{ n.tipo }} align-self-start">{{ n.alias or 'Sistema' }}</span>
+            <span>{{ n.mensaje }}</span>
+            <span class="ms-auto small text-muted text-nowrap">{{ n.fecha.strftime('%d/%m/%Y %H:%M') }}</span>
+        </li>
+        {% else %}
+        <li class="list-group-item text-muted">No hay notificaciones.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

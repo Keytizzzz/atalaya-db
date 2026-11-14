@@ -1,0 +1,25 @@
+{# Macros de formulario: muestran el mensaje de error debajo de cada campo #}
+{% macro campo(nombre, etiqueta, valor='', tipo='text', errores={}, ayuda='', requerido=true, extra='') -%}
+<div class="mb-3">
+    <label class="form-label small fw-semibold" for="{{ nombre }}">{{ etiqueta }}{% if requerido %} <span class="text-danger">*</span>{% endif %}</label>
+    <input type="{{ tipo }}" class="form-control {% if errores.get(nombre) %}is-invalid{% endif %}"
+           id="{{ nombre }}" name="{{ nombre }}" value="{{ valor or '' }}" {{ extra|safe }}>
+    {% if errores.get(nombre) %}<div class="invalid-feedback">{{ errores[nombre] }}</div>{% endif %}
+    {% if ayuda %}<div class="form-text">{{ ayuda }}</div>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro seleccion(nombre, etiqueta, opciones, valor='', errores={}) -%}
+<div class="mb-3">
+    <label class="form-label small fw-semibold" for="{{ nombre }}">{{ etiqueta }} <span class="text-danger">*</span></label>
+    <select class="form-select {% if errores.get(nombre) %}is-invalid{% endif %}" id="{{ nombre }}" name="{{ nombre }}">
+        <option value="">Selecciona…</option>
+        {% for op in opciones %}
+            {% set v = op[0] if op is not string else op %}
+            {% set t = op[1] if op is not string else op %}
+            <option value="{{ v }}" {% if v == valor %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+    </select>
+    {% if errores.get(nombre) %}<div class="invalid-feedback">{{ errores[nombre] }}</div>{% endif %}
+</div>
+{%- endmacro %}

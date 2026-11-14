@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block titulo %}Panel general{% endblock %}
+{% block contenido %}
+
+<!-- Indicadores -->
+<div class="row g-3 mb-4">
+    {% set kpis = [
+        ('Servidores', resumen.total, 'bi-hdd-network', '#75151D'),
+        ('En línea', resumen.en_linea, 'bi-check-circle', '#3E8E5E'),
+        ('Sin respuesta', resumen.con_error, 'bi-x-circle', '#B3261E' if resumen.con_error else '#8A6A6C'),
+        ('Bases de datos', resumen.bases_datos, 'bi-database', '#9E5151'),
+        ('Salud promedio', resumen.salud_promedio if resumen.salud_promedio is not none else '—', 'bi-heart-pulse', '#26080A'),
+    ] %}
+    {% for etiqueta, valor, icono, color in kpis %}
+    <div class="col">
+        <div class="card at-kpi h-100" style="--kpi-color: {{ color }}"><div class="card-body">
+            <div class="etiqueta"><i class="bi {{ icono }}"></i> {{ etiqueta }}</div>
+            <div class="valor">{{ valor }}</div>
+        </div></div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Accesos rápidos -->
+<h2 class="at-seccion">Accesos rápidos</h2>
+<div class="row g-3 mb-4">
+    {% set accesos = [
+        ('Servidores', 'Instancias enroladas y su estado', url_for('servidores.lista'), 'bi-hdd-network'),
+        ('Enrolar servidor', 'Registrar una nueva instancia', url_for('servidores.nuevo'), 'bi-plus-circle'),
+        ('Seguridad', 'Usuarios, roles y permisos', url_for('proximamente.modulo', clave='control_acceso'), 'bi-shield-check'),
+                ('Bases de datos', 'Almacenamiento y operaciones', url_for('bases_datos.lista'), 'bi-database'),
+        ('Capacidad', 'Semáforo y proyección', url_for('capacidad.panel'), 'bi-bar-chart-steps'),
+    ] %}
+    {% for titulo, desc, url, icono in accesos %}
+    <div class="col-md">
+        <a class="card at-acceso h-100" href="{{ url }}"><div class="card-body text-center">
+            <i class="bi {{ icono }}"></i>
+            <div class="fw-semibold mt-2">{{ titulo }}</div>
+            <div class="small text-muted">{{ desc }}</div>
+        </div></a>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row g-3">
+    <!-- Servidores -->
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center">
+                Estado de los servidores
+                <a class="btn btn-sm btn-atalaya ms-auto" href="{{ url_for('servidores.nuevo') }}"><i class="bi bi-plus"></i> Enrolar</a>
+            </div>
+            <div class="card-body p-0">
+                {% if servidores %}
+                <table class="table table-hover mb-0 align-middle">
+                    <thead><tr><th>Alias</th><th>Versión</th><th>Salud</th><th>Último latido</th></tr></thead>
+                    <tbody>
+                    {% for s in servidores %}
+                        <tr>
+                            <td><a href="{{ url_for('servidores.overview', id_servidor=s.id_servidor) }}">{{ s.alias }}</a></td>
+                            <td class="small">{{ s.version_motor or '—' }}</td>
+                            <td>
+                                {% set sc = s.health_score %}
+                                <span class="badge bg-{{ 'success' if sc is not none and sc >= 80 else ('warning' if sc is not none and sc >= 50 else 'danger') }}">{{ sc if sc is not none else '—' }}</span>
+                            </td>
+                            <td class="small text-muted">{{ s.ultimo_heartbeat.strftime('%d/%m/%Y %H:%M:%S') if s.ultimo_heartbeat else 'Nunca' }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="p-4 text-center text-muted">
+                    <i class="bi bi-hdd-network fs-1"></i>
+                    <p class="mt-2">Aún no hay servidores enrolados.</p>
+                    <a class="btn btn-atalaya" href="{{ url_for('servidores.nuevo') }}">Enrolar el primer servidor</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recientes y favoritos -->
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-star-fill text-warning"></i> Favoritos</div>
+            <ul class="list-group list-group-flush">
+                {% for p in favoritos %}
+                    <li class="list-group-item"><a href="{{ p.url }}">{{ p.titulo }}</a></li>
+                {% else %}
+                    <li class="list-group-item small text-muted">Marca páginas con la estrella <i class="bi bi-star"></i> de la barra superior.</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="card">
+            <div class="card-header"><i class="bi bi-clock-history"></i> Visitadas recientemente</div>
+            <ul class="list-group list-group-flush">
+                {% for p in recientes %}
+                    <li class="list-group-item d-flex"><a href="{{ p.url }}">{{ p.titulo }}</a>
+                        <span class="ms-auto small text-muted">{{ p.fecha.strftime('%H:%M') }}</span></li>
+                {% else %}
+                    <li class="list-group-item small text-muted">Sin visitas todavía.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

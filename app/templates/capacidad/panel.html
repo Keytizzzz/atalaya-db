@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block titulo %}Planeación de capacidad{% endblock %}
+{% block contenido %}
+
+{% if not servidores %}
+<div class="card"><div class="card-body text-center py-5">
+    <p>Primero enrola un servidor.</p><a class="btn btn-atalaya" href="{{ url_for('servidores.nuevo') }}">Enrolar servidor</a>
+</div></div>
+{% else %}
+
+<div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+    {% include "_selector_servidor.html" %}
+    {% if session.rol == 'Administrador' %}
+    <form method="post" action="{{ url_for('capacidad.simular', id_servidor=srv.id_servidor) }}" class="ms-auto">
+        <button class="btn btn-sm btn-outline-secondary" title="Inserta 50 000 ventas en TiendaDemo para que haya crecimiento real"
+                onclick="this.innerHTML='Insertando…'"><i class="bi bi-graph-up"></i> Simular crecimiento</button>
+    </form>
+    {% endif %}
+</div>
+
+{% if error %}<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>{% endif %}
+
+{% if filas %}
+<!-- Disponible / usado / ideal -->
+<div class="card mb-3">
+    <div class="card-header">Recursos de {{ srv.alias }}: disponible, en uso y lo ideal</div>
+    <div class="table-responsive">
+    <table class="table align-middle">
+        <thead><tr><th>Recurso</th><th>Disponible</th><th style="min-width: 220px">En uso</th><th>Lo ideal a tener</th><th>Latencia</th><th>Observación</th></tr></thead>
+        <tbody>
+        {% for f in filas %}
+        <tr>
+            <td><i class="bi {{ f.icono }} me-1" style="color: var(--at-vino)"></i> <strong>{{ f.recurso }}</strong></td>
+            <td class="mono">{{ f.disponible }}</td>
+            <td>
+                <div class="d-flex align-items-center gap-2 mb-1"><span class="at-luz {{ f.uso_color }}"></span><span class="mono small">{{ f.usado }}</span></div>
+                <div class="at-barra"><span style="width: {{ [f.uso_pct or 0, 100]|min }}%; background: var(--bs-{{ f.uso_color }})"></span></div>
+            </td>
+            <td class="mono fw-semibold" style="color: var(--at-vino)">{{ f.ideal }}</td>
+            <td><span class="at-luz {{ f.lat_color }} me-1"></span><span class="small">{{ f.latencia }}</span></td>
+            <td class="small text-muted">{{ f.nota }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div class="card-body border-top small d-flex flex-wrap gap-3">
+        <span><span class="at-luz success"></span> Sin riesgo</span>
+        <span><span class="at-luz warning"></span> Vigilar</span>
+        <span><span class="at-luz danger"></span> Riesgo alto</span>
+        <a class="ms-auto" data-bs-toggle="collapse" href="#formulas">¿Cómo se calcula?</a>
+    </div>
+    <div class="collapse" id="formulas"><div class="card-body border-top small">
+        <div class="row">
+            <div class="col-md-4"><strong>Uso</strong><br>CPU: verde &lt; 60 %, amarillo 60-80 %, rojo &gt; 80 %.<br>
+                Memoria: verde &lt; 75 %, amarillo 75-90 %.<br>Disco: verde &lt; 70 %, amarillo 70-85 %.</div>
+            <div class="col-md-4"><strong>Latencia</strong><br>CPU: % de esperas de señal (&lt; 15 % verde).<br>
+                Memoria: Page Life Expectancy (&gt; 300 s verde).<br>Disco: latencia promedio de E/S (&lt; 10 ms verde).</div>
+            <div class="col-md-4"><strong>Lo ideal</strong><br>CPU: núcleos para que el pico quede en 70 %.<br>
+                Memoria: que SQL Server use a lo más el 75 %.<br>Disco: uso proyectado a 180 días + 20 % de margen.</div>
+        </div>
+    </div></div>
+</div>
+{% endif %}
+
+<div class="row g-3">
+    <!-- Proyección -->
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header">Proyección de crecimiento del almacenamiento (datos + log)</div>
+            <div class="card-body">
+                {% if grafica %}
+                    <canvas id="graficaProyeccion" height="150"></canvas>
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-hourglass-split fs-2" style="color: var(--at-rosa)"></i>
+                        <p class="mt-2 mb-1">Todavía no hay suficiente historia para proyectar (se necesitan al menos 10 minutos de muestras).</p>
+                        {% if horas_historia is defined %}<p class="small">Historia actual: {{ (horas_historia * 60)|round(0)|int }} minutos.</p>{% endif %}
+                        <p class="small">Deja corriendo Atalaya DB unos minutos o usa “Simular crecimiento”.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header">Resultado de la proyección</div>
+            <div class="card-body">
+                {% if proyeccion %}
+                <dl class="at-ficha mb-0">
+                    <dt>Crecimiento estimado</dt><dd>{{ '{:,.2f}'.format(proyeccion.pendiente_dia) }} MB por día</dd>
+                    <dt>Tamaño actual (modelo)</dt><dd>{{ '{:,.1f}'.format(proyeccion.actual) }} MB</dd>
+                    <dt>En 30 días</dt><dd>{{ '{:,.1f}'.format(proyeccion.en_30) }} MB</dd>
+                    <dt>En 90 días</dt><dd>{{ '{:,.1f}'.format(proyeccion.en_90) }} MB</dd>
+                    <dt>En 180 días</dt><dd>{{ '{:,.1f}'.format(proyeccion.en_180) }} MB</dd>
+                    <dt>El disco se llenaría en</dt>
+                    <dd>{% if proyeccion.dias_lleno %}
+                            {% set d = proyeccion.dias_lleno %}
+                            <span class="at-luz {{ 'danger' if d < 30 else ('warning' if d < 180 else 'success') }}"></span>
+                            {{ '{:,.0f}'.format(d) }} días
+                        {% else %}Sin crecimiento{% endif %}</dd>
+                    <dt>Base del cálculo</dt><dd class="small">{{ proyeccion.muestras }} muestras · {{ proyeccion.horas }} h · R² = {{ proyeccion.r2 }}</dd>
+                </dl>
+                {% else %}<p class="text-muted small mb-0">Sin datos suficientes.</p>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if por_bd %}
+<div class="card mt-3">
+    <div class="card-header">Crecimiento por base de datos</div>
+    <table class="table align-middle">
+        <thead><tr><th>Base de datos</th><th class="text-end">Tamaño actual</th><th class="text-end">Crecimiento / día</th><th class="text-end">En 180 días</th><th class="text-end">Muestras</th></tr></thead>
+        <tbody>
+        {% for b in por_bd %}
+        <tr><td><a href="{{ url_for('bases_datos.detalle', id_servidor=srv.id_servidor, nombre=b.nombre) }}">{{ b.nombre }}</a></td>
+            <td class="text-end mono">{{ '%.1f'|format(b.actual) }} MB</td>
+            <td class="text-end mono">{{ '%.2f MB'|format(b.por_dia) if b.por_dia is not none else '—' }}</td>
+            <td class="text-end mono">{{ '%.1f MB'|format(b.en_180) if b.en_180 is not none else '—' }}</td>
+            <td class="text-end mono">{{ b.muestras }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if grafica %}
+<script>
+new Chart(document.getElementById('graficaProyeccion'), {
+    type: 'scatter',
+    data: { datasets: [
+        { label: 'Histórico (MB)', data: {{ grafica.historia | tojson }}, showLine: true, borderColor: PALETA.vino,
+          backgroundColor: 'rgba(117,21,29,.12)', fill: true, pointRadius: 0, tension: .2 },
+        { label: 'Proyección (MB)', data: {{ grafica.proyeccion | tojson }}, showLine: true, borderColor: PALETA.rosa,
+          borderDash: [6, 5], pointRadius: 4, pointBackgroundColor: PALETA.rosa }
+    ]},
+    options: {
+        plugins: { legend: { position: 'bottom' } },
+        scales: { x: { title: { display: true, text: '{{ grafica.unidad }} (0 = ahora; negativos = histórico)' } },
+                  y: { title: { display: true, text: 'MB' } } }
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

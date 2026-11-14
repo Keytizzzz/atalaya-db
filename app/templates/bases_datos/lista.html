@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block titulo %}Bases de datos{% endblock %}
+{% block contenido %}
+
+{% if not servidores %}
+<div class="card"><div class="card-body text-center py-5">
+    <i class="bi bi-database fs-1" style="color: var(--at-vino)"></i>
+    <p class="mt-2">Primero enrola un servidor para ver sus bases de datos.</p>
+    <a class="btn btn-atalaya" href="{{ url_for('servidores.nuevo') }}">Enrolar servidor</a>
+</div></div>
+{% else %}
+
+<div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+    {% include "_selector_servidor.html" %}
+    {% if rutas %}
+    <span class="small text-muted ms-auto"><i class="bi bi-folder2"></i> Datos: <span class="mono">{{ rutas.datos }}</span>
+        · Log: <span class="mono">{{ rutas.log }}</span> · Respaldos: <span class="mono">{{ rutas.respaldo }}</span></span>
+    {% endif %}
+</div>
+
+{% if error %}<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>{% endif %}
+
+<div class="row g-3 mb-3">
+    {% for etiqueta, valor, color in [
+        ('Bases de usuario', resumen.total, '#75151D'),
+        ('Snapshots', resumen.snapshots, '#9E5151'),
+        ('Espacio asignado', '%.1f GB'|format(resumen.tamano_mb / 1024), '#26080A'),
+        ('En memoria (buffer)', '%.0f MB'|format(resumen.memoria_mb), '#9E5151')] %}
+    <div class="col-md-3"><div class="card at-kpi h-100" style="--kpi-color: {{ color }}"><div class="card-body">
+        <div class="etiqueta">{{ etiqueta }}</div><div class="valor">{{ valor }}</div>
+    </div></div></div>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <div class="card-header d-flex align-items-center gap-2">
+        Bases de datos de {{ srv.alias }}
+        <div class="form-check form-switch ms-auto mb-0 small">
+            <input class="form-check-input" type="checkbox" id="verSistema">
+            <label class="form-check-label text-muted" for="verSistema" style="text-transform:none;letter-spacing:0">Mostrar bases del sistema</label>
+        </div>
+    </div>
+    <div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead><tr>
+            <th>Nombre</th><th>Modelo de recuperación</th><th>Estado</th><th class="text-end">Datos</th><th class="text-end">Log</th>
+            <th class="text-end">Memoria</th><th style="width: 130px">CPU</th><th class="text-end">IO Stall</th><th>Monitoreo</th><th></th>
+        </tr></thead>
+        <tbody>
+        {% for b in bases %}
+        <tr class="{% if b.es_sistema %}fila-sistema d-none{% endif %}">
+            <td>
+                {% if b.es_snapshot %}<i class="bi bi-camera text-muted" title="Snapshot"></i>{% endif %}
+                <a class="fw-semibold" href="{{ url_for('bases_datos.detalle', id_servidor=srv.id_servidor, nombre=b.nombre) }}">{{ b.nombre }}</a>
+                {% if b.es_sistema %}<span class="badge bg-secondary ms-1">sistema</span>{% endif %}
+                {% if b.es_snapshot %}<span class="badge bg-secondary ms-1">snapshot</span>{% endif %}
+            </td>
+            <td><span class="badge {{ {'FULL': 'text-bg-primary', 'SIMPLE': 'bg-secondary', 'BULK_LOGGED': 'text-bg-warning'}[b.modelo_recuperacion] }}">
+                {{ {'FULL': 'Completo', 'SIMPLE': 'Simple', 'BULK_LOGGED': 'Registro masivo'}[b.modelo_recuperacion] }}</span></td>
+            <td>{% if b.estado == 'ONLINE' %}<span class="text-success"><i class="bi bi-circle-fill small"></i> En línea</span>
+                {% else %}<span class="text-danger"><i class="bi bi-circle-fill small"></i> {{ b.estado|title }}</span>{% endif %}</td>
+            <td class="text-end mono">{{ '%.1f'|format(b.datos_mb) }} MB</td>
+            <td class="text-end mono">{{ '%.1f'|format(b.log_mb) }} MB</td>
+            <td class="text-end mono">{{ '%.1f'|format(b.memoria_mb) }} MB</td>
+            <td><div class="d-flex align-items-center gap-2">
+                <div class="at-barra flex-grow-1"><span style="width: {{ b.cpu_pct }}%; background: var(--at-vino)"></span></div>
+                <span class="mono small">{{ b.cpu_pct }}%</span></div></td>
+            <td class="text-end mono small" title="Latencia promedio por operación: {{ b.latencia_ms }} ms">
+                {{ '{:,}'.format(b.io_stall_ms) }} ms<br><span class="text-muted">{{ b.latencia_ms }} ms/op</span></td>
+            <td>{% if b.excluida %}<span class="badge bg-secondary">Excluida</span>
+                {% else %}<span class="badge text-bg-success">Incluida</span>{% endif %}</td>
+            <td class="text-end">
+                {% if not b.es_sistema %}
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ url_for('bases_datos.detalle', id_servidor=srv.id_servidor, nombre=b.nombre) }}"><i class="bi bi-eye"></i> Ver detalle y archivos</a></li>
+                        {% if session.rol == 'Administrador' %}
+                            {% if b.es_snapshot %}
+                            <li><form method="post" action="{{ url_for('bases_datos.eliminar_snapshot', id_servidor=srv.id_servidor, nombre=b.nombre) }}"
+                                      onsubmit="return confirm('¿Eliminar el snapshot {{ b.nombre }}?')">
+                                <button class="dropdown-item text-danger"><i class="bi bi-trash"></i> Eliminar snapshot</button></form></li>
+                            {% else %}
+                            <li><button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalCopiar"
+                                        data-origen="{{ b.nombre }}" data-accion="{{ url_for('bases_datos.copiar', id_servidor=srv.id_servidor, nombre=b.nombre) }}">
+                                <i class="bi bi-files"></i> Copiar…</button></li>
+                            <li><form method="post" action="{{ url_for('bases_datos.snapshot', id_servidor=srv.id_servidor, nombre=b.nombre) }}">
+                                <button class="dropdown-item"><i class="bi bi-camera"></i> Generar snapshot</button></form></li>
+                            <li><a class="dropdown-item" href="{{ url_for('bases_datos.detalle', id_servidor=srv.id_servidor, nombre=b.nombre) }}#mover"><i class="bi bi-folder-symlink"></i> Mover archivos…</a></li>
+                            {% endif %}
+                        {% endif %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><form method="post" action="{{ url_for('bases_datos.excluir', id_servidor=srv.id_servidor, nombre=b.nombre) }}">
+                            <input type="hidden" name="volver" value="lista">
+                            <button class="dropdown-item"><i class="bi {{ 'bi-eye' if b.excluida else 'bi-eye-slash' }}"></i>
+                                {{ 'Incluir en el monitoreo' if b.excluida else 'Excluir del monitoreo' }}</button></form></li>
+                    </ul>
+                </div>
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" class="text-center text-muted py-4">Sin información.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div class="card-body border-top small text-muted">
+        <strong>Memoria</strong>: páginas de la BD en el buffer pool · <strong>CPU</strong>: proporción del tiempo de CPU de las
+        consultas en caché · <strong>IO Stall</strong>: tiempo total que las lecturas/escrituras esperaron al disco desde que arrancó el servidor.
+    </div>
+</div>
+
+<!-- Modal: copiar base de datos -->
+<div class="modal fade" id="modalCopiar" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <form method="post" id="formCopiar">
+            <div class="modal-header"><h5 class="modal-title">Copiar base de datos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <p class="small text-muted">Se hará un respaldo <em>COPY_ONLY</em> de <strong id="copiarOrigen"></strong> y se restaurará
+                    con un nuevo nombre y archivos propios (RESTORE … WITH MOVE).</p>
+                <label class="form-label small fw-semibold" for="destino">Nombre de la copia</label>
+                <input class="form-control" id="destino" name="destino" required pattern="[A-Za-z][A-Za-z0-9_\-]{0,99}">
+            </div>
+            <div class="modal-footer"><button class="btn btn-atalaya" onclick="this.innerHTML='Copiando…'">Copiar</button></div>
+        </form>
+    </div></div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('verSistema')?.addEventListener('change', e =>
+    document.querySelectorAll('.fila-sistema').forEach(f => f.classList.toggle('d-none', !e.target.checked)));
+document.getElementById('modalCopiar')?.addEventListener('show.bs.modal', e => {
+    const b = e.relatedTarget;
+    document.getElementById('formCopiar').action = b.dataset.accion;
+    document.getElementById('copiarOrigen').textContent = b.dataset.origen;
+    document.getElementById('destino').value = b.dataset.origen + '_copia';
+});
+</script>
+{% endblock %}

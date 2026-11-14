@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block titulo %}Overview · {{ srv.alias }}{% endblock %}
+{% block contenido %}
+
+<!-- Encabezado del servidor -->
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <h2 class="h3 mb-0">{{ srv.alias }}</h2>
+    <span class="badge bg-{{ 'success' if srv.estado_conexion == 'OK' else 'danger' }}">{{ 'En línea' if srv.estado_conexion == 'OK' else 'Sin respuesta' }}</span>
+    <span class="badge bg-{{ 'success' if srv.monitoreo_activo else 'secondary' }}-subtle text-{{ 'success' if srv.monitoreo_activo else 'secondary' }}">
+        Monitoreo {{ 'activo' if srv.monitoreo_activo else 'pausado' }}</span>
+    {% for e in etiquetas %}
+        <form method="post" class="d-inline" action="{{ url_for('servidores.quitar_etiqueta', id_servidor=srv.id_servidor, id_etiqueta=e.id_etiqueta) }}">
+            <button class="badge border-0 bg-{{ e.color }}" title="Quitar etiqueta">{{ e.nombre }} <i class="bi bi-x"></i></button>
+        </form>
+    {% endfor %}
+    <button class="btn btn-sm btn-outline-secondary py-0" data-bs-toggle="modal" data-bs-target="#modalEtiqueta"><i class="bi bi-tag"></i> Etiqueta</button>
+
+    <div class="ms-auto d-flex gap-2">
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('servidores.overview', id_servidor=srv.id_servidor) }}"><i class="bi bi-arrow-clockwise"></i> Actualizar</a>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('bases_datos.lista', servidor=srv.id_servidor) }}"><i class="bi bi-database"></i> Bases de datos</a>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('servidores.editar', id_servidor=srv.id_servidor) }}"><i class="bi bi-pencil"></i> Editar</a>
+        <form method="post" action="{{ url_for('servidores.alternar_monitoreo', id_servidor=srv.id_servidor) }}">
+            <button class="btn btn-sm btn-outline-secondary"><i class="bi {{ 'bi-pause-circle' if srv.monitoreo_activo else 'bi-play-circle' }}"></i>
+                {{ 'Pausar' if srv.monitoreo_activo else 'Reanudar' }} monitoreo</button>
+        </form>
+        {% if session.rol == 'Administrador' %}
+        <form method="post" action="{{ url_for('servidores.eliminar', id_servidor=srv.id_servidor) }}"
+              onsubmit="return confirm('¿Eliminar {{ srv.alias }} de Atalaya DB? (no se borra nada del servidor real)')">
+            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
+{% endif %}
+
+<div class="row g-3 mb-3">
+    <!-- Health score -->
+    <div class="col-lg-3">
+        <div class="card h-100"><div class="card-body text-center">
+            <div class="small text-muted text-uppercase mb-2">Health Score</div>
+            <div class="at-score {{ estado_salud[1] }}" style="--valor: {{ srv.health_score or 0 }}">
+                <div class="centro"><div><div class="numero">{{ srv.health_score if srv.health_score is not none else '—' }}</div>
+                <div class="small text-muted mono">/100</div></div></div>
+            </div>
+            <div class="fw-semibold mt-2 text-{{ estado_salud[1] }}">{{ estado_salud[0] }}</div>
+            {% if detalle_score %}
+            <ul class="list-unstyled small text-start mt-3 mb-0">
+                {% for motivo, puntos in detalle_score %}<li><span class="text-danger">{{ puntos }}</span> {{ motivo }}</li>{% endfor %}
+            </ul>
+            {% elif srv.health_score == 100 %}
+            <p class="small text-muted mt-3 mb-0">Sin penalizaciones.</p>
+            {% endif %}
+        </div></div>
+    </div>
+
+    <!-- Ficha del servidor -->
+    <div class="col-lg-9">
+        <div class="card h-100">
+            <div class="card-header">Información general</div>
+            <div class="card-body">
+                <dl class="row at-ficha mb-0">
+                    {% macro dato(t, v) %}<div class="col-md-4"><dt>{{ t }}</dt><dd>{{ v if v not in (none, '') else '—' }}</dd></div>{% endmacro %}
+                    {{ dato('Nombre / alias', srv.alias) }}
+                    {{ dato('Instancia', info.instancia if info else srv.nombre_instancia) }}
+                    {{ dato('Sistema operativo', (info.distribucion_so ~ ' (' ~ info.plataforma_so ~ ')') if info else none) }}
+                    {{ dato('Motor y versión', ('SQL Server ' ~ info.version_num ~ ' ' ~ info.nivel) if info else srv.version_motor) }}
+                    {{ dato('Edición', info.edicion if info else srv.edicion) }}
+                    {{ dato('Dirección IP', (info.ip ~ ':' ~ info.puerto_tcp) if info and info.ip else srv.direccion ~ ':' ~ srv.puerto) }}
+                    {{ dato('Host', info.host if info else none) }}
+                    {{ dato('Procesador', (info.nucleos ~ ' núcleos lógicos') if info else none) }}
+                    {{ dato('Memoria', ((info.memoria_sql_mb ~ ' MB usados de ' ~ info.memoria_total_mb ~ ' MB') if info else none)) }}
+                    {{ dato('Almacenamiento', ('%.1f GB libres de %.1f GB'|format(volumenes|sum(attribute='libre_mb')/1024, volumenes|sum(attribute='total_mb')/1024)) if volumenes else none) }}
+                    {{ dato('Hora de arranque', info.hora_arranque.strftime('%d/%m/%Y %H:%M:%S') if info else none) }}
+                    {{ dato('Último latido', srv.ultimo_heartbeat.strftime('%d/%m/%Y %H:%M:%S') if srv.ultimo_heartbeat else none) }}
+                    {{ dato('Plataforma', srv.plataforma) }}
+                    {{ dato('Autenticación', srv.tipo_autenticacion ~ (' · ' ~ srv.usuario if srv.usuario else '')) }}
+                    {{ dato('Bases de datos de usuario', info.num_bases_datos if info else srv.num_bases_datos) }}
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficas -->
+<div class="row g-3 mb-3">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header">Espacio asignado: datos vs log</div>
+            <div class="card-body">
+                {% if espacio %}<canvas id="graficaEspacio" height="220"></canvas>
+                <p class="small text-muted text-center mt-2 mb-0">Datos: {{ espacio.datos_mb }} MB · Log: {{ espacio.log_mb }} MB</p>
+                {% else %}<p class="text-muted">Sin datos.</p>{% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header">Utilización del procesador (últimos 60 minutos)</div>
+            <div class="card-body">
+                {% if cpu %}<canvas id="graficaCpu" height="110"></canvas>
+                {% else %}<p class="text-muted">Sin datos de CPU todavía (SQL Server registra un punto por minuto).</p>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header">Volúmenes de disco</div>
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Volumen</th><th>Total</th><th>Libre</th><th>% libre</th></tr></thead>
+                <tbody>
+                {% for v in volumenes %}
+                    {% set pct = (v.libre_mb / v.total_mb * 100) if v.total_mb else 0 %}
+                    <tr><td>{{ v.volumen }}</td><td>{{ '%.1f'|format(v.total_mb/1024) }} GB</td><td>{{ '%.1f'|format(v.libre_mb/1024) }} GB</td>
+                        <td><span class="badge bg-{{ 'danger' if pct < 10 else ('warning' if pct < 20 else 'success') }}">{{ '%.0f'|format(pct) }}%</span></td></tr>
+                {% else %}<tr><td colspan="4" class="text-muted">Sin datos.</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header">Último respaldo completo por base de datos</div>
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Base de datos</th><th>Modelo de recuperación</th><th>Último respaldo</th></tr></thead>
+                <tbody>
+                {% for r in respaldos %}
+                    <tr><td>{{ r.base_datos }}</td><td>{{ r.modelo_recuperacion }}</td>
+                        <td>{% if r.ultimo_respaldo %}{{ r.ultimo_respaldo.strftime('%d/%m/%Y %H:%M') }}
+                            {% else %}<span class="badge bg-danger-subtle text-danger">Nunca</span>{% endif %}</td></tr>
+                {% else %}<tr><td colspan="3" class="text-muted">No hay bases de datos de usuario.</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para agregar etiqueta -->
+<div class="modal fade" id="modalEtiqueta" tabindex="-1">
+    <div class="modal-dialog modal-sm"><div class="modal-content">
+        <form method="post" action="{{ url_for('servidores.agregar_etiqueta', id_servidor=srv.id_servidor) }}">
+            <div class="modal-header"><h5 class="modal-title h6">Agregar etiqueta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <label class="form-label small">Etiqueta existente</label>
+                <select class="form-select mb-3" name="id_etiqueta">
+                    <option value="">—</option>
+                    {% for e in todas_etiquetas %}<option value="{{ e.id_etiqueta }}">{{ e.nombre }}</option>{% endfor %}
+                </select>
+                <label class="form-label small">… o crea una nueva</label>
+                <input class="form-control" name="nueva" maxlength="50" placeholder="Ej. Ventas">
+            </div>
+            <div class="modal-footer"><button class="btn btn-atalaya btn-sm">Agregar</button></div>
+        </form>
+    </div></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+{% if espacio %}
+new Chart(document.getElementById('graficaEspacio'), {
+    type: 'doughnut',
+    data: { labels: ['Datos', 'Log'],
+            datasets: [{ data: [{{ espacio.datos_mb }}, {{ espacio.log_mb }}], backgroundColor: [PALETA.vino, PALETA.palido], borderColor: '#fff', borderWidth: 3 }] },
+    options: { cutout: '68%', plugins: { legend: { position: 'bottom' } } }
+});
+{% endif %}
+{% if cpu %}
+new Chart(document.getElementById('graficaCpu'), {
+    type: 'line',
+    data: {
+        labels: {{ cpu | map(attribute='hora') | list | tojson }},
+        datasets: [
+            { label: 'SQL Server %', data: {{ cpu | map(attribute='cpu_sql') | list | tojson }}, borderColor: PALETA.vino, backgroundColor: 'rgba(117,21,29,.10)', fill: true, tension: .35, pointRadius: 0 },
+            { label: 'Otros procesos %', data: {{ cpu | map(attribute='cpu_otros') | list | tojson }}, borderColor: PALETA.rosa, borderDash: [4, 4], tension: .35, pointRadius: 0 }
+        ]
+    },
+    options: { scales: { y: { min: 0, max: 100 } }, plugins: { legend: { position: 'bottom' } } }
+});
+{% endif %}
+</script>
+{% endblock %}

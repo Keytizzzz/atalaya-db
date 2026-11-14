@@ -1,0 +1,13 @@
+{% extends "base_publica.html" %}
+{% from "_campos.html" import campo %}
+{% block titulo %}Recuperar contraseña{% endblock %}
+{% block contenido %}
+<h1 class="mb-1">Recuperar contraseña</h1>
+<p class="small text-muted">Escribe tu correo y te enviaremos un enlace para restablecer tu contraseña.</p>
+<form method="post" novalidate>
+    {{ campo('correo', 'Correo electrónico', correo, 'email', errores) }}
+    <button class="btn btn-atalaya w-100 py-2">Enviar enlace</button>
+</form>
+<hr>
+<p class="text-center small mb-0"><a href="{{ url_for('auth.login') }}"><i class="bi bi-arrow-left"></i> Volver a iniciar sesión</a></p>
+{% endblock %}

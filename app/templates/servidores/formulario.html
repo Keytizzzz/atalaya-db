@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from "_campos.html" import campo, seleccion %}
+{% block titulo %}{{ 'Editar servidor' if editando else 'Enrolar nuevo servidor' }}{% endblock %}
+{% block contenido %}
+<form method="post" novalidate>
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-hdd-network"></i> Datos del servidor</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">{{ campo('alias', 'Nombre / alias', datos.alias, 'text', errores, ayuda='Ej. "SQL Producción"') }}</div>
+                    <div class="col-md-4">{{ campo('direccion', 'Dirección del servidor', datos.direccion, 'text', errores, ayuda='IP o nombre de host. Ej. localhost') }}</div>
+                    <div class="col-md-2">{{ campo('puerto', 'Puerto', datos.puerto, 'number', errores) }}</div>
+                    <div class="col-md-6">{{ seleccion('plataforma', 'Plataforma', plataformas, datos.plataforma, errores) }}</div>
+                    <div class="col-md-6">{{ seleccion('modo_acceso', 'Modo de acceso', modos, datos.modo_acceso, errores) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-key"></i> Autenticación</div>
+            <div class="card-body">
+                {{ seleccion('tipo_autenticacion', 'Tipo de autenticación', autenticaciones, datos.tipo_autenticacion, errores) }}
+                <div id="credenciales_sql" class="row">
+                    <div class="col-md-6">{{ campo('usuario', 'Usuario', datos.usuario, 'text', errores, extra='autocomplete="off"') }}</div>
+                    <div class="col-md-6">{{ campo('password', 'Contraseña', '', 'password', errores,
+                        ayuda=('Déjala vacía para conservar la actual.' if editando else 'Se guarda cifrada (AES/Fernet).'),
+                        requerido=not editando, extra='autocomplete="new-password"') }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <a class="text-decoration-none" data-bs-toggle="collapse" href="#avanzadas"><i class="bi bi-gear"></i> Opciones avanzadas</a>
+            </div>
+            <div class="collapse show" id="avanzadas"><div class="card-body">
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" id="cifrar_conexion" name="cifrar_conexion" {% if datos.cifrar_conexion %}checked{% endif %}>
+                    <label class="form-check-label" for="cifrar_conexion">Cifrar la conexión (TLS)</label>
+                </div>
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="confiar_certificado" name="confiar_certificado" {% if datos.confiar_certificado %}checked{% endif %}>
+                    <label class="form-check-label" for="confiar_certificado">Confiar en el certificado del servidor</label>
+                    <div class="form-text">Necesario con certificados autofirmados (como los contenedores Docker).</div>
+                </div>
+                <p class="small fw-semibold mb-2">Credenciales de administrador del sistema operativo (opcional)</p>
+                <div class="row">
+                    <div class="col-md-6">{{ campo('so_usuario', 'Usuario del SO', datos.so_usuario, 'text', errores, requerido=false) }}</div>
+                    <div class="col-md-6">{{ campo('so_password', 'Contraseña del SO', '', 'password', errores, requerido=false) }}</div>
+                </div>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                {% if resultado %}
+                    <div class="alert alert-{{ 'success' if resultado.ok else 'danger' }} small">
+                        <i class="bi {{ 'bi-check-circle' if resultado.ok else 'bi-x-circle' }}"></i> {{ resultado.mensaje }}
+                    </div>
+                {% endif %}
+                {% if errores %}
+                    <div class="alert alert-warning small">Revisa los campos marcados en rojo.</div>
+                {% endif %}
+                <button class="btn btn-outline-secondary w-100 mb-2" name="accion" value="probar">
+                    <i class="bi bi-plug"></i> Probar conexión</button>
+                <button class="btn btn-atalaya w-100 mb-2" name="accion" value="guardar">
+                    <i class="bi bi-save"></i> {{ 'Guardar cambios' if editando else 'Enrolar servidor' }}</button>
+                <a class="btn btn-link w-100" href="{{ url_for('servidores.overview', id_servidor=srv.id_servidor) if editando else url_for('servidores.lista') }}">Cancelar</a>
+                <hr>
+                <p class="small text-muted mb-0">Antes de guardar, Atalaya DB se conecta al servidor para verificar las credenciales
+                    y detectar automáticamente la versión, la edición y el número de bases de datos.</p>
+            </div>
+        </div>
+    </div>
+</div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+// Oculta usuario/contraseña cuando se elige autenticación de Windows
+const tipo = document.getElementById('tipo_autenticacion');
+const cred = document.getElementById('credenciales_sql');
+const actualizar = () => cred.style.display = tipo.value === 'Windows' ? 'none' : '';
+tipo.addEventListener('change', actualizar); actualizar();
+</script>
+{% endblock %}

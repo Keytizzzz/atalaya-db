@@ -1,0 +1,11 @@
+{% extends "base_publica.html" %}
+{% from "_campos.html" import campo %}
+{% block titulo %}Nueva contraseña{% endblock %}
+{% block contenido %}
+<h1 class="mb-3">Nueva contraseña</h1>
+<form method="post" novalidate>
+    {{ campo('password', 'Nueva contraseña', '', 'password', errores, ayuda='Mínimo 8 caracteres, con mayúscula, minúscula y número.') }}
+    {{ campo('confirmar', 'Confirmar contraseña', '', 'password', errores) }}
+    <button class="btn btn-atalaya w-100 py-2">Guardar contraseña</button>
+</form>
+{% endblock %}

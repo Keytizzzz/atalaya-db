@@ -1,0 +1,44 @@
+# ------------------------------------------------------------
+# Atalaya DB - Instancias de SQL Server para pruebas
+#   sql1 -> puerto 1433 (aloja también la BD propia AtalayaMeta)
+#   sql2 -> puerto 1434 (segunda instancia monitoreada)
+# La contraseña se toma de la variable SA_PASSWORD del archivo .env
+# ------------------------------------------------------------
+services:
+  sql1:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: atalaya-sql1
+    hostname: atalaya-sql1
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      MSSQL_SA_PASSWORD: "${SA_PASSWORD}"
+      MSSQL_AGENT_ENABLED: "true"
+      TZ: "America/Tijuana"        # zona horaria (cámbiala si es necesario)
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql1_data:/var/opt/mssql
+      - ./respaldos/sql1:/var/opt/mssql/backup
+    restart: unless-stopped
+
+  sql2:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: atalaya-sql2
+    hostname: atalaya-sql2
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      MSSQL_SA_PASSWORD: "${SA_PASSWORD}"
+      MSSQL_AGENT_ENABLED: "true"
+      TZ: "America/Tijuana"        # zona horaria (cámbiala si es necesario)
+    ports:
+      - "1434:1433"
+    volumes:
+      - sql2_data:/var/opt/mssql
+      - ./respaldos/sql2:/var/opt/mssql/backup
+    restart: unless-stopped
+
+volumes:
+  sql1_data:
+  sql2_data:

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block titulo %}Atalaya DB{% endblock %} · Atalaya DB</title>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/atalaya.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+{% macro enlace_menu(clave) -%}
+    {%- if clave == 'inicio' -%}{{ url_for('inicio.home') }}
+    {%- elif clave == 'servidores' -%}{{ url_for('servidores.lista') }}
+    {%- elif clave == 'bases_datos' -%}{{ url_for('bases_datos.lista') }}
+    {%- elif clave == 'capacidad' -%}{{ url_for('capacidad.panel') }}
+    {%- else -%}{{ url_for('proximamente.modulo', clave=clave) }}{%- endif -%}
+{%- endmacro %}
+
+<!-- ========== Riel de íconos ========== -->
+<nav class="at-riel">
+    <!-- Ícono pequeño: coloca tu archivo en app/static/img/logo-icono.png (cuadrado) -->
+    <a class="at-monograma {% if hay_logo_icono %}con-logo{% endif %}" href="{{ url_for('inicio.home') }}" data-titulo="Atalaya DB" data-unidad="">
+        {% if hay_logo_icono %}<img src="{{ url_for('static', filename='img/logo-icono.png') }}" alt="Atalaya DB">{% else %}A{% endif %}
+    </a>
+    <ul class="at-riel-lista">
+        {% set separar_despues = ['servidores', 'capacidad', 'recomendaciones', 'respaldos', 'predicciones'] %}
+        {% for clave, titulo, icono, unidad, listo in MENU %}
+            {% set url = enlace_menu(clave) %}
+            {% set activo = (request.path == url) or (clave != 'inicio' and request.path.startswith(url)) %}
+            <li>
+                <a class="at-riel-btn {% if activo %}activo{% endif %} {% if not listo %}pendiente{% endif %}"
+                   href="{{ url }}" data-titulo="{{ titulo }}" data-unidad="{{ unidad }}{% if not listo %} · pronto{% endif %}">
+                    <i class="bi {{ icono }}"></i>
+                </a>
+            </li>
+            {% if clave in separar_despues %}<li class="at-separador"></li>{% endif %}
+        {% endfor %}
+    </ul>
+    <a class="at-riel-btn" href="{{ url_for('auth.logout') }}" data-titulo="Cerrar sesión" data-unidad=""><i class="bi bi-box-arrow-left"></i></a>
+</nav>
+<div class="at-tip" id="tip"></div>
+
+<div class="at-principal">
+    <!-- ========== Barra superior ========== -->
+    <header class="at-superior">
+        <!-- ESPACIO PARA EL LOGO: coloca tu archivo en app/static/img/logo.png (horizontal, fondo transparente) -->
+        <a class="at-logo-espacio" href="{{ url_for('inicio.home') }}">
+            {% if hay_logo %}
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Atalaya DB">
+            {% else %}
+                <span class="at-logo-texto">Atalaya DB<small>monitoreo de bases de datos</small></span>
+            {% endif %}
+        </a>
+        <span class="at-divisor"></span>
+        <h1 class="at-pagina me-auto">{% block encabezado %}{{ self.titulo() }}{% endblock %}</h1>
+
+        <span class="at-chip d-none d-lg-inline"><span class="led"></span>Recolector activo</span>
+
+        <form method="post" action="{{ url_for('inicio.favorito') }}" class="m-0">
+            <input type="hidden" name="url" value="{{ request.full_path.rstrip('?') }}">
+            <input type="hidden" name="titulo" value="{{ self.titulo() }}">
+            <button class="at-icono-btn" title="Agregar o quitar de favoritos">
+                <i class="bi {% if es_favorito %}bi-star-fill{% else %}bi-star{% endif %}"></i>
+            </button>
+        </form>
+
+        <a class="at-icono-btn" href="{{ url_for('inicio.notificaciones') }}" title="Notificaciones">
+            <i class="bi bi-bell"></i>
+            {% if notificaciones_no_leidas %}<span class="badge rounded-pill bg-danger">{{ notificaciones_no_leidas }}</span>{% endif %}
+        </a>
+
+        <div class="dropdown">
+            <button class="at-usuario" data-bs-toggle="dropdown">
+                <span class="at-avatar">{{ (session.nombre or '?')[:1]|upper }}</span>
+                {{ session.nombre }} <i class="bi bi-chevron-down small"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><span class="dropdown-item-text small text-muted">{{ session.correo }}<br>Rol: {{ session.rol }}</span></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i> Cerrar sesión</a></li>
+            </ul>
+        </div>
+    </header>
+
+    <main class="at-contenido">
+        {% with mensajes = get_flashed_messages(with_categories=true) %}
+            {% for categoria, mensaje in mensajes %}
+                <div class="alert alert-{{ categoria }} alert-dismissible fade show">{{ mensaje }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+            {% endfor %}
+        {% endwith %}
+        {% block contenido %}{% endblock %}
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+// Tooltip del riel de íconos
+const tip = document.getElementById('tip');
+document.querySelectorAll('.at-riel [data-titulo]').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+        const r = el.getBoundingClientRect();
+        tip.innerHTML = el.dataset.titulo + (el.dataset.unidad ? `<small>${el.dataset.unidad}</small>` : '');
+        tip.style.top = (r.top + r.height / 2 - 14) + 'px';
+        tip.classList.add('visible');
+    });
+    el.addEventListener('mouseleave', () => tip.classList.remove('visible'));
+});
+// Paleta de las gráficas
+const PALETA = { vino: '#75151D', rosa: '#9E5151', palido: '#E4D1CF', cacao: '#26080A' };
+if (window.Chart) {
+    Chart.defaults.color = '#8A6A6C';
+    Chart.defaults.borderColor = '#F1E4E2';
+    Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

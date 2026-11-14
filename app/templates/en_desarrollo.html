@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block contenido %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi {{ icono }} display-4" style="color: var(--at-vino)"></i>
+        <h2 class="mt-3">{{ titulo }}</h2>
+        <span class="badge bg-secondary mb-3">Unidad {{ unidad }} · En desarrollo</span>
+        <p class="text-muted mx-auto" style="max-width: 640px">{{ descripcion }}</p>
+        <p class="small text-muted">Este módulo se entregará en la siguiente fase del proyecto.</p>
+    </div>
+</div>
+{% endblock %}

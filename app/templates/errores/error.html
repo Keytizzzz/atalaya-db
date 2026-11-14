@@ -1,0 +1,9 @@
+{% extends "base.html" if session.id_usuario else "base_publica.html" %}
+{% block titulo %}Error {{ codigo }}{% endblock %}
+{% block contenido %}
+<div class="text-center py-4">
+    <div class="display-5 fw-bold text-secondary">{{ codigo }}</div>
+    <p class="mt-2">{{ mensaje }}</p>
+    <a class="btn btn-atalaya" href="{{ url_for('inicio.home') }}">Ir al inicio</a>
+</div>
+{% endblock %}

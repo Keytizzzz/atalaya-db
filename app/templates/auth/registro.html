@@ -1,0 +1,16 @@
+{% extends "base_publica.html" %}
+{% from "_campos.html" import campo %}
+{% block titulo %}Crear cuenta{% endblock %}
+{% block contenido %}
+<h1 class="mb-1">Crear cuenta</h1>
+<p class="text-muted mb-4">Tu cuenta tendrá rol de Usuario.</p>
+<form method="post" novalidate>
+    {{ campo('nombre', 'Nombre completo', datos.nombre, 'text', errores) }}
+    {{ campo('correo', 'Correo electrónico', datos.correo, 'email', errores) }}
+    {{ campo('password', 'Contraseña', '', 'password', errores, ayuda='Mínimo 8 caracteres, con mayúscula, minúscula y número.') }}
+    {{ campo('confirmar', 'Confirmar contraseña', '', 'password', errores) }}
+    <button class="btn btn-atalaya w-100 py-2">Crear cuenta</button>
+</form>
+<hr>
+<p class="text-center small mb-0"><a href="{{ url_for('auth.login') }}"><i class="bi bi-arrow-left"></i> Volver a iniciar sesión</a></p>
+{% endblock %}

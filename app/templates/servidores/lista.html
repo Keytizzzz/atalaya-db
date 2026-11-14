@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titulo %}Servidores{% endblock %}
+{% block contenido %}
+<div class="card">
+    <div class="card-header d-flex align-items-center gap-2">
+        <span>Instancias enroladas ({{ servidores|length }})</span>
+        <input id="buscar" class="form-control form-control-sm ms-auto" style="max-width: 240px" placeholder="Buscar…">
+        <a class="btn btn-sm btn-atalaya" href="{{ url_for('servidores.nuevo') }}"><i class="bi bi-plus-lg"></i> Enrolar servidor</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="tabla">
+            <thead>
+                <tr><th>Alias</th><th>Dirección</th><th>Versión</th><th>Edición</th><th class="text-center">Bases de datos</th>
+                    <th>Salud</th><th>Monitoreo</th><th>Último chequeo</th><th>Etiquetas</th></tr>
+            </thead>
+            <tbody>
+            {% for s in servidores %}
+                <tr>
+                    <td>
+                        <i class="bi bi-circle-fill small {{ 'text-success' if s.estado_conexion == 'OK' else 'text-danger' }}"></i>
+                        <a class="fw-semibold" href="{{ url_for('servidores.overview', id_servidor=s.id_servidor) }}">{{ s.alias }}</a>
+                    </td>
+                    <td class="small">{{ s.direccion }},{{ s.puerto }}</td>
+                    <td class="small">{{ s.version_motor or '—' }}</td>
+                    <td class="small">{{ s.edicion or '—' }}</td>
+                    <td class="text-center">{{ s.num_bases_datos if s.num_bases_datos is not none else '—' }}</td>
+                    <td><span class="badge bg-{{ s.estado_salud[1] }}">{{ s.health_score if s.health_score is not none else '—' }} · {{ s.estado_salud[0] }}</span></td>
+                    <td>{% if s.monitoreo_activo %}<span class="badge bg-success-subtle text-success">Activo</span>
+                        {% else %}<span class="badge bg-secondary-subtle text-secondary">Pausado</span>{% endif %}</td>
+                    <td class="small text-muted">{{ s.ultimo_chequeo.strftime('%d/%m/%Y %H:%M') if s.ultimo_chequeo else '—' }}</td>
+                    <td>{% for e in s.etiquetas %}<span class="badge bg-{{ e.color }} me-1">{{ e.nombre }}</span>{% endfor %}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="9" class="text-center text-muted py-4">No hay servidores enrolados.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('buscar').addEventListener('input', e => {
+    const t = e.target.value.toLowerCase();
+    document.querySelectorAll('#tabla tbody tr').forEach(f => f.style.display = f.innerText.toLowerCase().includes(t) ? '' : 'none');
+});
+</script>
+{% endblock %}
