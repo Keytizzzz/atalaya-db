@@ -131,6 +131,6 @@ py -m unittest discover tests   # correr pruebas
 
 | Integrante | Rol |
 |---|---|
-| _Nombre 1_ | Backend, conexión al motor y recolector |
-| _Nombre 2_ | Interfaz, dashboards y monitoreo |
-| _Nombre 3_ | Seguridad, respaldos, pruebas y documentación |
+| _Keyla Denisse Ortiz Moreno _ | Backend, conexión al motor y recolector |
+| _Gomez Enciso Landon Donovan| Interfaz, dashboards y monitoreo |
+| _Lizarraga Figueroa Samanta | Seguridad, respaldos, pruebas y documentación |
